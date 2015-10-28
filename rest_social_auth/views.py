@@ -22,6 +22,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from requests.exceptions import HTTPError
 
+from .metadata import SocialRestAuthViewMetadata
 from .serializers import (OAuth2InputSerializer, OAuth1InputSerializer, UserSerializer,
     TokenSerializer, UserTokenSerializer)
 
@@ -64,6 +65,7 @@ class BaseSocialAuthView(GenericAPIView):
     oauth1_serializer_class_in = OAuth1InputSerializer
     oauth2_serializer_class_in = OAuth2InputSerializer
     serializer_class = None
+    metadata_class = SocialRestAuthViewMetadata
 
     def oauth_v1(self):
         assert hasattr(self.request, 'backend'), 'Don\'t call this method before decorate_request'
@@ -159,6 +161,11 @@ class BaseSocialAuthView(GenericAPIView):
 
     def respond_error(self, error):
         return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    def options(self, request, *args, **kwargs):
+        decorate_request(request, self.get_serializer_in_data()['provider'])
+        return super(BaseSocialAuthView, self).options(request, *args, **kwargs)
+
 
 
 class SocialSessionAuthView(BaseSocialAuthView):
