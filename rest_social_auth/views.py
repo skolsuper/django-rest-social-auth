@@ -37,11 +37,6 @@ def load_strategy(request=None):
     return get_strategy(STRATEGY, STORAGE, request)
 
 
-@psa(REDIRECT_URI, load_strategy=load_strategy)
-def decorate_request(request, backend):
-    pass
-
-
 class BaseSocialAuthView(GenericAPIView):
     """
     View will login or signin (create) the user from social oauth2.0 provider.
@@ -66,6 +61,10 @@ class BaseSocialAuthView(GenericAPIView):
     oauth2_serializer_class_in = OAuth2InputSerializer
     serializer_class = None
 
+    def initial(self, request, *args, **kwargs):
+        super(BaseSocialAuthView, self).initial(request, *args, **kwargs)
+        request.auth_data = self.get_auth_data()
+
     def oauth_v1(self):
         assert hasattr(self.request, 'backend'), 'Don\'t call this method before decorate_request'
         return isinstance(self.request.backend, BaseOAuth1)
@@ -82,18 +81,19 @@ class BaseSocialAuthView(GenericAPIView):
         kwargs['context'] = self.get_serializer_context()
         return serializer_class(*args, **kwargs)
 
-    def get_serializer_in_data(self):
+    def get_auth_data(self):
         """
-        Compile the incoming data into a form fit for the serializer_in class.
+        Compile the incoming data. Needed for python social auth strategy and serializer input data.
         :return: Data for serializer in the form of a dictionary with 'provider' and 'code' keys.
         """
-        return self.request.data
+        auth_data = self.request.data.copy()
+        auth_data['provider'] = self.kwargs['backend']
+        return auth_data
 
     @method_decorator(never_cache)
-    def post(self, request, *args, **kwargs):
-        input_data = self.get_serializer_in_data()
-        self.set_input_data(request, input_data)
-        decorate_request(request, input_data['provider'])
+    @method_decorator(psa(REDIRECT_URI, load_strategy=load_strategy))
+    def post(self, request, provider, *args, **kwargs):
+        input_data = request.auth_data
         serializer_in = self.get_serializer_in(data=input_data)
         if (isinstance(serializer_in, OAuth1InputSerializer) and
                 request.backend.OAUTH_TOKEN_PARAMETER_NAME not in input_data):
@@ -145,12 +145,6 @@ class BaseSocialAuthView(GenericAPIView):
         For example in case of session authentication store the session in
         cookies.
         """
-
-    def set_input_data(self, request, auth_data):
-        """
-        auth_data will be used used as request_data in strategy
-        """
-        request.auth_data = auth_data
 
     def get_redirect_uri(self, manual_redirect_uri):
         if not manual_redirect_uri:
