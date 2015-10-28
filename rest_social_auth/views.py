@@ -65,7 +65,6 @@ class BaseSocialAuthView(GenericAPIView):
         request.auth_data = self.get_auth_data()
 
     def oauth_v1(self):
-        assert hasattr(self.request, 'backend'), 'Don\'t call this method before decorate_request'
         return isinstance(self.request.backend, BaseOAuth1)
 
     def get_serializer_class_in(self):
@@ -94,8 +93,7 @@ class BaseSocialAuthView(GenericAPIView):
     def post(self, request, provider, *args, **kwargs):
         input_data = request.auth_data
         serializer_in = self.get_serializer_in(data=input_data)
-        if (isinstance(serializer_in, OAuth1InputSerializer) and
-                request.backend.OAUTH_TOKEN_PARAMETER_NAME not in input_data):
+        if self.oauth_v1() and request.backend.OAUTH_TOKEN_PARAMETER_NAME not in input_data:
             # If this is oauth1 and first stage (1st is get request_token, 2nd is get access_token)
             request_token = parse_qs(request.backend.set_unauthorized_token())
             return Response(request_token)
