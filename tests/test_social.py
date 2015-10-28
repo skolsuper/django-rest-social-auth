@@ -75,12 +75,10 @@ class BaseTiwtterApiTestCase(RestSocialMixin, TwitterOAuth1Test):
 
 class TestSocialAuth1(APITestCase, BaseTiwtterApiTestCase):
     def test_login_social_oauth1_session(self):
-        resp = self.client.post(reverse('login_social_session'),
-            data={'provider': 'twitter'})
+        resp = self.client.post(reverse('login_social_session', args=['twitter']))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data, parse_qs(self.request_token_body))
-        resp = self.client.post(reverse('login_social_session'), data={
-            'provider': 'twitter',
+        resp = self.client.post(reverse('login_social_session', args=['twitter']), data={
             'oauth_token': 'foobar',
             'oauth_verifier': 'overifier'
         })
@@ -90,8 +88,8 @@ class TestSocialAuth1(APITestCase, BaseTiwtterApiTestCase):
 class TestSocialAuth2(APITestCase, BaseFacebookAPITestCase):
 
     def test_login_social_session(self):
-        resp = self.client.post(reverse('login_social_session'),
-            data={'provider': 'facebook', 'code': '3D52VoM1uiw94a1ETnGvYlCw'})
+        resp = self.client.post(reverse('login_social_session', args=['facebook']),
+                                data={'code': '3D52VoM1uiw94a1ETnGvYlCw'})
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data['email'], self.email)
         # check cookies are set
@@ -101,8 +99,8 @@ class TestSocialAuth2(APITestCase, BaseFacebookAPITestCase):
             get_user_model().objects.filter(email=self.email).exists())
 
     def test_login_social_token_user(self):
-        resp = self.client.post(reverse('login_social_token_user'),
-            data={'provider': 'facebook', 'code': '3D52VoM1uiw94a1ETnGvYlCw'})
+        resp = self.client.post(reverse('login_social_token_user', args=['facebook']),
+                                data={'code': '3D52VoM1uiw94a1ETnGvYlCw'})
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data['email'], self.email)
         # check token exists
@@ -111,8 +109,8 @@ class TestSocialAuth2(APITestCase, BaseFacebookAPITestCase):
         self.assertEqual(token.user.email, self.email)
 
     def test_login_social_token_only(self):
-        resp = self.client.post(reverse('login_social_token'),
-            data={'provider': 'facebook', 'code': '3D52VoM1uiw94a1ETnGvYlCw'})
+        resp = self.client.post(reverse('login_social_token', args=['facebook']),
+                                data={'code': '3D52VoM1uiw94a1ETnGvYlCw'})
         self.assertEqual(resp.status_code, 200)
         # check token exists
         token = Token.objects.get(key=resp.data['token'])
@@ -120,26 +118,25 @@ class TestSocialAuth2(APITestCase, BaseFacebookAPITestCase):
         self.assertEqual(token.user.email, self.email)
 
     def test_login_social_http_origin(self):
-        resp = self.client.post(reverse('login_social_session'),
-            data={'provider': 'facebook', 'code': '3D52VoM1uiw94a1ETnGvYlCw'},
-            HTTP_ORIGIN="http://frontend.com")
+        resp = self.client.post(reverse('login_social_session', args=['facebook']),
+                                data={'code': '3D52VoM1uiw94a1ETnGvYlCw'},
+                                HTTP_ORIGIN="http://frontend.com")
         self.assertEqual(resp.status_code, 200)
         url_params = dict(parse_qsl(urlparse(HTTPretty.latest_requests[0].path).query))
         self.assertEqual(url_params['redirect_uri'], "http://frontend.com/")
 
     @override_settings(REST_SOCIAL_OAUTH_ABSOLUTE_REDIRECT_URI='http://myproject.com/')
     def test_login_absolute_redirect(self):
-        resp = self.client.post(reverse('login_social_session'),
-            data={'provider': 'facebook', 'code': '3D52VoM1uiw94a1ETnGvYlCw'})
+        resp = self.client.post(reverse('login_social_session', args=['facebook']),
+                                data={'code': '3D52VoM1uiw94a1ETnGvYlCw'})
         self.assertEqual(resp.status_code, 200)
         url_params = dict(parse_qsl(urlparse(HTTPretty.latest_requests[0].path).query))
         self.assertEqual('http://myproject.com/', url_params['redirect_uri'])
 
     @override_settings(REST_SOCIAL_OAUTH_ABSOLUTE_REDIRECT_URI='http://myproject.com/')
     def test_login_manual_redirect(self):
-        resp = self.client.post(reverse('login_social_session'),
-            data={'provider': 'facebook', 'code': '3D52VoM1uiw94a1ETnGvYlCw',
-                'redirect_uri': 'http://manualdomain.com/'})
+        resp = self.client.post(reverse('login_social_session', args=['facebook']),
+                                data={'code': '3D52VoM1uiw94a1ETnGvYlCw', 'redirect_uri': 'http://manualdomain.com/'})
         self.assertEqual(resp.status_code, 200)
         url_params = dict(parse_qsl(urlparse(HTTPretty.latest_requests[0].path).query))
         self.assertEqual('http://manualdomain.com/', url_params['redirect_uri'])
@@ -149,8 +146,8 @@ class TestSocialAuth2Error(APITestCase, BaseFacebookAPITestCase):
     access_token_status = 400
 
     def test_login_oauth_provider_error(self):
-        resp = self.client.post(reverse('login_social_session'),
-            data={'provider': 'facebook', 'code': '3D52VoM1uiw94a1ETnGvYlCw'})
+        resp = self.client.post(reverse('login_social_session', args=['facebook']),
+                                data={'code': '3D52VoM1uiw94a1ETnGvYlCw'})
         self.assertEqual(resp.status_code, 400)
 
 
@@ -158,6 +155,6 @@ class TestSocialAuth2HTTPError(APITestCase, BaseFacebookAPITestCase):
     access_token_status = 401
 
     def test_login_oauth_provider_http_error(self):
-        resp = self.client.post(reverse('login_social_session'),
-            data={'provider': 'facebook', 'code': '3D52VoM1uiw94a1ETnGvYlCw'})
+        resp = self.client.post(reverse('login_social_session', args=['facebook']),
+                                data={'code': '3D52VoM1uiw94a1ETnGvYlCw'})
         self.assertEqual(resp.status_code, 400)
