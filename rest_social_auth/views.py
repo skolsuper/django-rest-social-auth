@@ -14,7 +14,7 @@ from django.utils.six.moves.urllib.parse import urljoin
 from social.apps.django_app.utils import psa, STORAGE
 from social.backends.oauth import BaseOAuth1
 from social.strategies.utils import get_strategy
-from social.utils import user_is_authenticated, parse_qs
+from social.utils import user_is_authenticated, parse_qs, setting_name
 from social.apps.django_app.views import _do_login as social_auth_login
 from social.exceptions import AuthException
 from rest_framework.generics import GenericAPIView
@@ -30,10 +30,11 @@ l = logging.getLogger(__name__)
 
 REDIRECT_URI = getattr(settings, 'REST_SOCIAL_OAUTH_REDIRECT_URI', '/')
 DOMAIN_FROM_ORIGIN = getattr(settings, 'REST_SOCIAL_DOMAIN_FROM_ORIGIN', True)
+STRATEGY = getattr(settings, setting_name('STRATEGY'), 'rest_social_auth.strategy.DRFStrategy')
 
 
 def load_strategy(request=None):
-    return get_strategy('rest_social_auth.strategy.DRFStrategy', STORAGE, request)
+    return get_strategy(STRATEGY, STORAGE, request)
 
 
 @psa(REDIRECT_URI, load_strategy=load_strategy)
